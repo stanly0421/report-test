@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能演示 - 音樂播放器</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .demo-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        .demo-button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .demo-button:hover {
+            background: #764ba2;
+        }
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>功能演示</h1>
+        
+        <div class="info-box">
+            <h3>📋 功能說明</h3>
+            <ul>
+                <li>✅ 即時字幕同步：字幕隨音樂播放自動高亮</li>
+                <li>✅ 點擊跳轉：點擊任何歌詞，音樂跳到該位置</li>
+                <li>✅ 自動滾動：當前歌詞始終在視窗中央</li>
+                <li>✅ 視覺效果：高亮顯示當前歌詞，已播放歌詞變灰</li>
+            </ul>
+        </div>
+        
+        <div class="player-section">
+            <div class="player-controls">
+                <audio id="audio-player" controls>
+                    <source src="sample-audio.mp3" type="audio/mpeg">
+                    您的瀏覽器不支持音頻播放。
+                </audio>
+            </div>
+            
+            <div class="track-info">
+                <h2 id="track-title">示範歌曲</h2>
+                <p id="track-artist">示範藝人</p>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🎮 互動測試</h3>
+            <p>點擊下方按鈕來測試功能：</p>
+            <button class="demo-button" onclick="simulateTime(0)">跳到開始</button>
+            <button class="demo-button" onclick="simulateTime(9)">跳到 9 秒</button>
+            <button class="demo-button" onclick="simulateTime(18)">跳到 18 秒</button>
+            <button class="demo-button" onclick="simulateTime(30)">跳到 30 秒</button>
+            <button class="demo-button" onclick="playFromLyric(5)">播放第 6 句</button>
+        </div>
+        
+        <div class="lyrics-section">
+            <h3>歌詞</h3>
+            <div id="lyrics-container" class="lyrics-container">
+                <!-- Lyrics will be dynamically loaded here -->
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>💡 使用提示</h3>
+            <p><strong>點擊任何一句歌詞</strong>，音樂將自動跳轉到該位置並開始播放。</p>
+            <p><strong>注意</strong>：如果沒有音樂文件，介面仍然可以展示，但無法播放聲音。請參考 AUDIO_GUIDE.md 添加音樂文件。</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        // Demo functions for testing
+        function simulateTime(seconds) {
+            const audio = document.getElementById('audio-player');
+            audio.currentTime = seconds;
+            if (audio.paused) {
+                audio.play().catch(e => console.log('Auto-play prevented by browser'));
+            }
+        }
+        
+        function playFromLyric(index) {
+            const audio = document.getElementById('audio-player');
+            if (lyricsData[index]) {
+                audio.currentTime = lyricsData[index].time;
+                if (audio.paused) {
+                    audio.play().catch(e => console.log('Auto-play prevented by browser'));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
