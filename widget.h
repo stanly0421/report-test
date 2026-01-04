@@ -44,12 +44,6 @@
 #include <QJsonObject>
 // 引入 Qt JSON 陣列類別
 #include <QJsonArray>
-// 引入 Qt 外部程序處理類別
-#include <QProcess>
-// 引入 Qt 多行文字編輯器類別
-#include <QTextEdit>
-// 引入 Qt 文字瀏覽器類別（支援 HTML）
-#include <QTextBrowser>
 // 引入 Qt 計時器類別
 #include <QTimer>
 // 引入 Qt 事件處理類別
@@ -63,23 +57,18 @@ class Widget;
 // Qt 命名空間結束標記
 QT_END_NAMESPACE
 
-// 影片/音樂資訊結構
-struct VideoInfo {
-    QString videoId;          // YouTube 影片 ID (用於 YouTube 連結)
+// 音樂資訊結構
+struct MusicInfo {
     QString filePath;         // 本地檔案路徑 (用於本地音樂)
-    QString title;            // 影片/音樂標題
-    QString channelTitle;     // 頻道名稱/藝術家
-    QString thumbnailUrl;     // 縮圖 URL
-    QString description;      // 描述
-    QString subtitlePath;     // 字幕檔案路徑 (SRT 檔案)
-    bool isFavorite;          // 是否為喜愛的影片/音樂
-    bool isLocalFile;         // 是否為本地檔案
+    QString title;            // 音樂標題
+    QString artist;           // 藝術家
+    bool isFavorite;          // 是否為喜愛的音樂
 };
 
 // 播放清單結構
 struct Playlist {
     QString name;              // 播放清單名稱
-    QList<VideoInfo> videos;   // 影片列表
+    QList<MusicInfo> songs;    // 音樂列表
 };
 
 // Widget 類別，繼承自 QWidget，並使用 Q_OBJECT 宏啟用 Qt 的信號槽機制
@@ -107,8 +96,6 @@ private slots:
     
     // 載入本地檔案按鈕點擊處理函式
     void onLoadLocalFileClicked();
-    // 載入字幕檔案按鈕點擊處理函式
-    void onLoadSubtitleFileClicked();
     
     // 播放清單項目雙擊處理函式
     void onVideoDoubleClicked(QListWidgetItem* item);
@@ -143,14 +130,6 @@ private slots:
     void onVolumeSliderChanged(int value);
     // 音量標籤點擊處理函式（靜音/取消靜音）
     void onVolumeLabelClicked();
-    
-    // Whisper 輸出準備就緒處理函式
-    void onWhisperOutputReady();
-    // Whisper 完成處理函式
-    void onWhisperFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    
-    // 字幕連結點擊處理函式（跳轉到指定時間）
-    void onSubtitleLinkClicked(const QUrl& url);
 
 private:
     // 設定使用者介面的函式
@@ -173,34 +152,14 @@ private:
     int getNextVideoIndex();
     // 取得隨機影片/音樂的索引，excludeCurrent 決定是否排除當前播放的項目
     int getRandomVideoIndex(bool excludeCurrent = true);
-    // 取得未播放的影片/音樂索引清單
+    // 取得未播放的音樂索引清單
     QList<int> getUnplayedVideoIndices(bool excludeCurrent = true);
-    // 播放 YouTube 連結的函式
-    void playYouTubeLink(const QString& link);
     // 播放本地檔案的函式
     void playLocalFile(const QString& filePath);
-    // 從 URL 提取 YouTube 影片 ID 的函式
-    QString extractYouTubeVideoId(const QString& url);
-    // 產生 YouTube 顯示用的 HTML 內容
-    QString generateYouTubeDisplayHTML(const QString& title, const QString& channel, const QString& videoId);
-    // 產生本地音樂顯示用的 HTML 內容
-    QString generateLocalMusicHTML(const QString& title, const QString& fileName);
-    // 產生歡迎畫面的 HTML 內容
-    QString generateWelcomeHTML();
-    // 更新影片資訊標籤的函式
-    void updateVideoLabels(const VideoInfo& video);
-    // 建立影片顯示用的 HTML 內容
-    QString createVideoDisplayHTML(const VideoInfo& video);
-    // 啟動 Whisper 語音轉錄的函式
-    void startWhisperTranscription(const QString& audioFilePath);
-    // 載入 SRT 字幕檔案的函式
-    void loadSrt(const QString& srtFilePath);
-    // 更新當前播放影片的字幕顯示
-    void updateSubtitleDisplay();
-    // 恢復當前影片標題的函式
-    void restoreCurrentVideoTitle();
-    // 更新本地音樂顯示區域，包含字幕內容
-    void updateLocalMusicDisplay(const QString& title, const QString& fileName, const QString& subtitles);
+    // 更新音樂資訊標籤的函式
+    void updateMusicLabels(const MusicInfo& music);
+    // 恢復當前音樂標題的函式
+    void restoreCurrentMusicTitle();
     // 根據音量等級更新音量圖示
     void updateVolumeIcon(int volume);
     
@@ -216,22 +175,12 @@ protected:
     // Qt 音訊輸出物件指標
     QAudioOutput* audioOutput;
     
-    // 影片顯示區域 - 使用 QTextBrowser 顯示內容和字幕
-    QTextBrowser* videoDisplayArea;
-    
-    // Whisper 語音轉錄外部程序物件指標
-    QProcess* whisperProcess;
-    // 當前 SRT 字幕檔案的路徑
-    QString currentSrtFilePath;
-    
     // 載入本地檔案的按鈕指標
     QPushButton* loadLocalFileButton;
-    // 載入字幕檔案的按鈕指標
-    QPushButton* loadSubtitleButton;
-    // 影片標題標籤指標
-    QLabel* videoTitleLabel;
-    // 頻道名稱標籤指標
-    QLabel* channelLabel;
+    // 音樂標題標籤指標
+    QLabel* musicTitleLabel;
+    // 藝術家名稱標籤指標
+    QLabel* artistLabel;
     // 播放/暫停按鈕指標
     QPushButton* playPauseButton;
     // 上一首按鈕指標
@@ -269,8 +218,8 @@ protected:
     QList<Playlist> playlists;
     // 當前選中的播放清單索引
     int currentPlaylistIndex;
-    // 當前播放的影片/音樂索引
-    int currentVideoIndex;
+    // 當前播放的音樂索引
+    int currentMusicIndex;
     // 是否啟用隨機播放模式
     bool isShuffleMode;
     // 是否啟用循環播放模式
@@ -287,17 +236,9 @@ protected:
     bool isSwitchingSongs;
     // 上次使用的播放清單名稱
     QString lastPlaylistName;
-    // 當前會話中已播放的影片/音樂索引集合
-    QSet<int> playedVideosInCurrentSession;
-    // 用於解析字幕時間戳的正則表達式
-    QRegularExpression subtitleTimestampRegex;
-    // 用於解析 SRT 格式時間戳的正則表達式
-    QRegularExpression srtTimestampRegex;
-    // 用於識別 SRT 序號行的正則表達式
-    QRegularExpression sequenceNumberRegex;
-    // 累積的字幕內容，用於整合顯示在主視窗
-    QString currentSubtitles;
-    // 用於恢復影片標題的計時器（在字幕跳轉通知後）
+    // 當前會話中已播放的音樂索引集合
+    QSet<int> playedSongsInCurrentSession;
+    // 用於恢復音樂標題的計時器（在跳轉通知後）
     QTimer* titleRestoreTimer;
 };
 
