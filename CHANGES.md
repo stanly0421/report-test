@@ -2,7 +2,7 @@
 
 ## 變更摘要
 
-本次修改完成了兩項主要任務：
+本專案完成了以下主要任務：
 
 ### 1. 刪除非執行檔案
 
@@ -19,6 +19,36 @@
 ### 2. 實作字幕同步功能
 
 實作了音樂時間軸與字幕顯示的同步功能，使用 QMediaPlayer 搭配 QTimer 實現。
+
+### 3. 修復字幕滾動跟隨功能
+
+修復了字幕顯示區域的滾動行為，使其在字幕更新時自動跟隨當前播放的字幕，而不是回到最上面。
+
+#### 問題描述
+
+原本的實作在更新字幕高亮時，會重新生成完整的 HTML 內容並透過 `setHtml()` 更新 QTextBrowser。這導致顯示區域的滾動位置被重置，總是回到最上面，使用者無法看到當前正在播放的字幕。
+
+#### 解決方案
+
+在 `onSubtitleSyncTimer()` 函式中，當字幕索引改變並更新顯示後，使用 `scrollToAnchor()` 方法滾動到當前字幕的錨點位置。每個字幕都有唯一的 ID（如 `subtitle-0`, `subtitle-1` 等），可以用來定位。
+
+**修改的程式碼** (`widget.cpp`):
+```cpp
+// 更新顯示
+updateSubtitleDisplay();
+
+// 滾動到當前字幕位置，保持字幕可見
+if (currentSubtitleIndex >= 0) {
+    QString anchorId = QString("subtitle-%1").arg(currentSubtitleIndex);
+    videoDisplayArea->scrollToAnchor(anchorId);
+}
+```
+
+#### 使用效果
+
+- 當音樂播放時，字幕高亮會自動更新，顯示區域會自動滾動保持當前字幕可見
+- 當用戶點擊字幕時間戳跳轉時，跳轉後的字幕會保持在可見範圍內
+- 用戶仍可手動滾動查看其他字幕，但當字幕更新時會自動跟隨
 
 ## 技術實作細節
 
