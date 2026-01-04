@@ -89,11 +89,6 @@ function updateLyrics() {
         if (index === activeIndex) {
             // 添加 active 類別（高亮顯示）
             line.classList.add('active');
-            // 自動捲動到此歌詞行，使其顯示在視窗中央
-            line.scrollIntoView({
-                behavior: 'smooth',  // 使用平滑捲動動畫
-                block: 'center'      // 將元素置於視窗中央
-            });
         } else if (index < activeIndex) {
             // 如果此歌詞在當前啟用的歌詞之前，添加 passed 類別
             line.classList.add('passed');
