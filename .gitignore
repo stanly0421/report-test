@@ -1,0 +1,30 @@
+_codeql_detected_source_root
+build_test/
+build/
+*.o
+moc_*.cpp
+ui_*.h
+*.pro.user
+Makefile
+.qmake.stash
+widget_old.cpp
+*.backup
+
+# CMake build artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Qt Creator user files
+*.pro.user*
+*.autosave
+
+# Binary output
+last-report
+last-report.exe
+

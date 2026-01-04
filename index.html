@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音樂播放器 - 即時字幕</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>音樂播放器</h1>
+        
+        <div class="player-section">
+            <div class="player-controls">
+                <audio id="audio-player" controls>
+                    <source src="sample-audio.mp3" type="audio/mpeg">
+                    您的瀏覽器不支持音頻播放。
+                </audio>
+            </div>
+            
+            <div class="track-info">
+                <h2 id="track-title">示範歌曲</h2>
+                <p id="track-artist">示範藝人</p>
+            </div>
+        </div>
+        
+        <div class="lyrics-section">
+            <h3>歌詞</h3>
+            <div id="lyrics-container" class="lyrics-container">
+                <!-- Lyrics will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
