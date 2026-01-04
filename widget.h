@@ -63,6 +63,9 @@ class Widget;
 // Qt 命名空間結束標記
 QT_END_NAMESPACE
 
+// 字幕同步計時器間隔（毫秒）
+const int SUBTITLE_SYNC_INTERVAL_MS = 100;
+
 // 影片/音樂資訊結構
 struct VideoInfo {
     QString videoId;          // YouTube 影片 ID (用於 YouTube 連結)

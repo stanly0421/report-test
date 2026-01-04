@@ -108,8 +108,8 @@ Widget::Widget(QWidget *parent)
     // 連接計時器逾時信號到恢復標題的槽函式
     connect(titleRestoreTimer, &QTimer::timeout, this, &Widget::restoreCurrentVideoTitle);
     
-    // 設置字幕同步計時器間隔為 100 毫秒（每 0.1 秒更新一次）
-    subtitleSyncTimer->setInterval(100);
+    // 設置字幕同步計時器間隔
+    subtitleSyncTimer->setInterval(SUBTITLE_SYNC_INTERVAL_MS);
     // 連接字幕同步計時器到槽函式
     connect(subtitleSyncTimer, &QTimer::timeout, this, &Widget::onSubtitleSyncTimer);
     
@@ -2195,21 +2195,62 @@ void Widget::onSubtitleSyncTimer()
     // 取得當前播放位置（毫秒轉秒）
     double currentTime = mediaPlayer->position() / 1000.0;
     
-    // 找出當前應該顯示的字幕索引
+    // 找出當前應該顯示的字幕索引（優化：從當前索引附近開始搜索）
     int newSubtitleIndex = -1;
-    for (int i = 0; i < subtitleEntries.size(); i++) {
-        const SubtitleEntry& entry = subtitleEntries[i];
-        if (currentTime >= entry.startTime && currentTime <= entry.endTime) {
-            newSubtitleIndex = i;
-            break;
+    
+    // 如果有當前字幕，先檢查是否仍在範圍內
+    if (currentSubtitleIndex >= 0 && currentSubtitleIndex < subtitleEntries.size()) {
+        const SubtitleEntry& current = subtitleEntries[currentSubtitleIndex];
+        if (currentTime >= current.startTime && currentTime <= current.endTime) {
+            // 仍在當前字幕範圍內，不需更新
+            return;
+        }
+        
+        // 檢查下一個字幕（連續播放時最常見的情況）
+        if (currentSubtitleIndex + 1 < subtitleEntries.size()) {
+            const SubtitleEntry& next = subtitleEntries[currentSubtitleIndex + 1];
+            if (currentTime >= next.startTime && currentTime <= next.endTime) {
+                newSubtitleIndex = currentSubtitleIndex + 1;
+            }
+        }
+        
+        // 檢查上一個字幕（用戶向後拖動進度條時）
+        if (newSubtitleIndex < 0 && currentSubtitleIndex > 0) {
+            const SubtitleEntry& prev = subtitleEntries[currentSubtitleIndex - 1];
+            if (currentTime >= prev.startTime && currentTime <= prev.endTime) {
+                newSubtitleIndex = currentSubtitleIndex - 1;
+            }
+        }
+    }
+    
+    // 如果附近沒有找到，使用二分搜索（用於跳轉或初始化）
+    if (newSubtitleIndex < 0) {
+        int left = 0;
+        int right = subtitleEntries.size() - 1;
+        
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            const SubtitleEntry& entry = subtitleEntries[mid];
+            
+            if (currentTime >= entry.startTime && currentTime <= entry.endTime) {
+                newSubtitleIndex = mid;
+                break;
+            } else if (currentTime < entry.startTime) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
         }
     }
     
     // 如果字幕索引改變，更新顯示
     if (newSubtitleIndex != currentSubtitleIndex) {
+        int previousIndex = currentSubtitleIndex;
         currentSubtitleIndex = newSubtitleIndex;
         
-        // 重新生成 HTML，高亮當前字幕
+        // 優化：只重新生成變更的字幕行，而不是全部
+        // 由於 QTextBrowser 不支援部分 HTML 更新，這裡仍需重新生成全部 HTML
+        // 但只在索引真正改變時才更新，減少不必要的重繪
         QString htmlSubtitles;
         QTextStream stream(&htmlSubtitles);
         
