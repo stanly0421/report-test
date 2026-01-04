@@ -63,6 +63,9 @@ class Widget;
 // Qt 命名空間結束標記
 QT_END_NAMESPACE
 
+// 字幕同步計時器間隔（毫秒）
+const int SUBTITLE_SYNC_INTERVAL_MS = 100;
+
 // 影片/音樂資訊結構
 struct VideoInfo {
     QString videoId;          // YouTube 影片 ID (用於 YouTube 連結)
@@ -80,6 +83,13 @@ struct VideoInfo {
 struct Playlist {
     QString name;              // 播放清單名稱
     QList<VideoInfo> videos;   // 影片列表
+};
+
+// 字幕條目結構
+struct SubtitleEntry {
+    double startTime;          // 開始時間（秒）
+    double endTime;            // 結束時間（秒）
+    QString text;              // 字幕文字
 };
 
 // Widget 類別，繼承自 QWidget，並使用 Q_OBJECT 宏啟用 Qt 的信號槽機制
@@ -151,6 +161,9 @@ private slots:
     
     // 字幕連結點擊處理函式（跳轉到指定時間）
     void onSubtitleLinkClicked(const QUrl& url);
+    
+    // 字幕同步計時器處理函式（更新當前字幕高亮）
+    void onSubtitleSyncTimer();
 
 private:
     // 設定使用者介面的函式
@@ -299,6 +312,12 @@ protected:
     QString currentSubtitles;
     // 用於恢復影片標題的計時器（在字幕跳轉通知後）
     QTimer* titleRestoreTimer;
+    // 儲存解析後的字幕條目清單
+    QList<SubtitleEntry> subtitleEntries;
+    // 用於同步字幕顯示的計時器
+    QTimer* subtitleSyncTimer;
+    // 當前高亮的字幕索引
+    int currentSubtitleIndex;
 };
 
 // 結束標頭檔保護宏

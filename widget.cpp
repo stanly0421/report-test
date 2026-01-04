@@ -92,6 +92,8 @@ Widget::Widget(QWidget *parent)
     , sequenceNumberRegex(R"(^\d+$)")  // 初始化序號正則表達式
     , currentSubtitles("")  // 初始化當前字幕為空字串
     , titleRestoreTimer(new QTimer(this))  // 創建標題恢復計時器物件
+    , subtitleSyncTimer(new QTimer(this))  // 創建字幕同步計時器物件
+    , currentSubtitleIndex(-1)  // 初始化當前字幕索引為 -1（無字幕）
 {
     // 設定 UI 元件
     ui->setupUi(this);
@@ -105,6 +107,11 @@ Widget::Widget(QWidget *parent)
     titleRestoreTimer->setSingleShot(true);
     // 連接計時器逾時信號到恢復標題的槽函式
     connect(titleRestoreTimer, &QTimer::timeout, this, &Widget::restoreCurrentVideoTitle);
+    
+    // 設置字幕同步計時器間隔
+    subtitleSyncTimer->setInterval(SUBTITLE_SYNC_INTERVAL_MS);
+    // 連接字幕同步計時器到槽函式
+    connect(subtitleSyncTimer, &QTimer::timeout, this, &Widget::onSubtitleSyncTimer);
     
     // 設置主視窗標題
     setWindowTitle("音樂播放器");
@@ -862,8 +869,13 @@ void Widget::playLocalFile(const QString& filePath)
     // 停止當前播放
     mediaPlayer->stop();
     
-    // 清空字幕顯示
+    // 停止字幕同步計時器
+    subtitleSyncTimer->stop();
+    
+    // 清空字幕數據
     currentSubtitles = "";
+    subtitleEntries.clear();
+    currentSubtitleIndex = -1;
     
     // 創建影片資訊
     VideoInfo video;
@@ -979,9 +991,20 @@ void Widget::onMediaPlayerStateChanged()
     if (mediaPlayer->playbackState() == QMediaPlayer::PlayingState) {
         isPlaying = true;
         playPauseButton->setText("⏸");
+        // 啟動字幕同步計時器（如果有字幕）
+        if (!subtitleEntries.isEmpty()) {
+            subtitleSyncTimer->start();
+        }
+    } else if (mediaPlayer->playbackState() == QMediaPlayer::PausedState) {
+        isPlaying = false;
+        playPauseButton->setText("▶");
+        // 暫停時停止字幕同步計時器
+        subtitleSyncTimer->stop();
     } else if (mediaPlayer->playbackState() == QMediaPlayer::StoppedState) {
         isPlaying = false;
         playPauseButton->setText("▶");
+        // 停止時停止字幕同步計時器
+        subtitleSyncTimer->stop();
         
         // 本地檔案播放結束，自動播放下一首（如果有）
         // 只有當前正在播放本地檔案時才自動播放下一首
@@ -1323,6 +1346,9 @@ void Widget::playVideo(int index)
     // 停止標題恢復計時器，確保切換歌曲時立即顯示新歌曲標題
     titleRestoreTimer->stop();
     
+    // 停止字幕同步計時器
+    subtitleSyncTimer->stop();
+    
     // 使用 RAII guard 確保 isSwitchingSongs 標誌總是被正確重置
     SongSwitchGuard guard(isSwitchingSongs);
     
@@ -1339,8 +1365,10 @@ void Widget::playVideo(int index)
         mediaPlayer->setSource(QUrl::fromLocalFile(video.filePath));
         mediaPlayer->play();
         
-        // 清空字幕顯示
+        // 清空字幕數據
         currentSubtitles = "";
+        subtitleEntries.clear();
+        currentSubtitleIndex = -1;
         
         QFileInfo fileInfo(video.filePath);
         updateLocalMusicDisplay(video.title, fileInfo.fileName(), "");
@@ -1911,20 +1939,11 @@ void Widget::loadSrt(const QString& srtFilePath)
     QString srtContent = in.readAll();
     srtFile.close();
     
-    // 解析 SRT 格式並轉換為可點擊的 HTML
-    // SRT 格式：
-    // 1
-    // 00:00:00,000 --> 00:00:05,230
-    // 這是一段文字
-    //
-    // 2
-    // 00:00:05,230 --> 00:00:10,000
-    // 這是另一段文字
+    // 清空之前的字幕條目
+    subtitleEntries.clear();
+    currentSubtitleIndex = -1;
     
-    QString htmlSubtitles;
-    QTextStream stream(&htmlSubtitles);
-    
-    // 使用類別成員的正則表達式解析 SRT（避免重複編譯）
+    // 解析 SRT 格式並儲存到 subtitleEntries
     QStringList lines = srtContent.split('\n');
     int i = 0;
     
@@ -1937,13 +1956,13 @@ void Widget::loadSrt(const QString& srtFilePath)
             continue;
         }
         
-        // 跳過序號行（純數字）- 使用類別成員 regex
+        // 跳過序號行（純數字）
         if (sequenceNumberRegex.match(line).hasMatch()) {
             i++;
             continue;
         }
         
-        // 檢查是否為時間戳行 - 使用類別成員 regex
+        // 檢查是否為時間戳行
         QRegularExpressionMatch match = srtTimestampRegex.match(line);
         if (match.hasMatch()) {
             // 提取開始時間
@@ -1962,11 +1981,6 @@ void Widget::loadSrt(const QString& srtFilePath)
             double startTime = startHour * 3600 + startMin * 60 + startSec + startMs / 1000.0;
             double endTime = endHour * 3600 + endMin * 60 + endSec + endMs / 1000.0;
             
-            // 格式化時間戳顯示
-            QString timestamp = QString("[%1s - %2s]")
-                .arg(startTime, 0, 'f', 2)
-                .arg(endTime, 0, 'f', 2);
-            
             // 讀取字幕文字（可能有多行）
             i++;
             QString subtitleText;
@@ -1978,13 +1992,13 @@ void Widget::loadSrt(const QString& srtFilePath)
                     break;
                 }
                 
-                // 遇到序號行，字幕文字結束（緩存匹配結果）
+                // 遇到序號行，字幕文字結束
                 QRegularExpressionMatch seqMatch = sequenceNumberRegex.match(textLine);
                 if (seqMatch.hasMatch()) {
                     break;
                 }
                 
-                // 遇到時間戳行，字幕文字結束（異常情況，緩存匹配結果）
+                // 遇到時間戳行，字幕文字結束
                 QRegularExpressionMatch tsMatch = srtTimestampRegex.match(textLine);
                 if (tsMatch.hasMatch()) {
                     break;
@@ -1997,22 +2011,50 @@ void Widget::loadSrt(const QString& srtFilePath)
                 i++;
             }
             
-            // 創建可點擊的連結
-            QString clickableTimestamp = QString("<a href=\"#%1\">%2</a>")
-                .arg(startTime)
-                .arg(timestamp);
-            
-            stream << "<p>" << clickableTimestamp << " " << subtitleText.toHtmlEscaped() << "</p>";
+            // 創建字幕條目並加入清單
+            SubtitleEntry entry;
+            entry.startTime = startTime;
+            entry.endTime = endTime;
+            entry.text = subtitleText;
+            subtitleEntries.append(entry);
         } else {
             i++;
         }
     }
     
-    // 清空之前的字幕並設置新的字幕
+    // 生成 HTML 字幕顯示（初始狀態，無高亮）
+    QString htmlSubtitles;
+    QTextStream stream(&htmlSubtitles);
+    
+    for (int idx = 0; idx < subtitleEntries.size(); idx++) {
+        const SubtitleEntry& entry = subtitleEntries[idx];
+        
+        // 格式化時間戳顯示
+        QString timestamp = QString("[%1s - %2s]")
+            .arg(entry.startTime, 0, 'f', 2)
+            .arg(entry.endTime, 0, 'f', 2);
+        
+        // 創建可點擊的連結，並添加唯一 ID
+        QString clickableTimestamp = QString("<a href=\"#%1\">%2</a>")
+            .arg(entry.startTime)
+            .arg(timestamp);
+        
+        stream << "<p id=\"subtitle-" << idx << "\">" 
+               << clickableTimestamp << " " 
+               << entry.text.toHtmlEscaped() 
+               << "</p>";
+    }
+    
+    // 設置字幕內容
     currentSubtitles = htmlSubtitles;
     
     // 更新顯示
     updateSubtitleDisplay();
+    
+    // 啟動字幕同步計時器（當有字幕且正在播放時）
+    if (!subtitleEntries.isEmpty() && isPlaying) {
+        subtitleSyncTimer->start();
+    }
 }
 
 void Widget::onWhisperFinished(int exitCode, QProcess::ExitStatus exitStatus)
@@ -2139,5 +2181,111 @@ void Widget::onVolumeLabelClicked()
         // 直接設置音量為0，但不改變滑桿位置
         audioOutput->setVolume(0.0);
         updateVolumeIcon(0);
+    }
+}
+
+void Widget::onSubtitleSyncTimer()
+{
+    // 如果沒有字幕或沒有正在播放，停止計時器
+    if (subtitleEntries.isEmpty() || !isPlaying) {
+        subtitleSyncTimer->stop();
+        return;
+    }
+    
+    // 取得當前播放位置（毫秒轉秒）
+    double currentTime = mediaPlayer->position() / 1000.0;
+    
+    // 找出當前應該顯示的字幕索引（優化：從當前索引附近開始搜索）
+    int newSubtitleIndex = -1;
+    
+    // 如果有當前字幕，先檢查是否仍在範圍內
+    if (currentSubtitleIndex >= 0 && currentSubtitleIndex < subtitleEntries.size()) {
+        const SubtitleEntry& current = subtitleEntries[currentSubtitleIndex];
+        if (currentTime >= current.startTime && currentTime <= current.endTime) {
+            // 仍在當前字幕範圍內，不需更新
+            return;
+        }
+        
+        // 檢查下一個字幕（連續播放時最常見的情況）
+        if (currentSubtitleIndex + 1 < subtitleEntries.size()) {
+            const SubtitleEntry& next = subtitleEntries[currentSubtitleIndex + 1];
+            if (currentTime >= next.startTime && currentTime <= next.endTime) {
+                newSubtitleIndex = currentSubtitleIndex + 1;
+            }
+        }
+        
+        // 檢查上一個字幕（用戶向後拖動進度條時）
+        if (newSubtitleIndex < 0 && currentSubtitleIndex > 0) {
+            const SubtitleEntry& prev = subtitleEntries[currentSubtitleIndex - 1];
+            if (currentTime >= prev.startTime && currentTime <= prev.endTime) {
+                newSubtitleIndex = currentSubtitleIndex - 1;
+            }
+        }
+    }
+    
+    // 如果附近沒有找到，使用二分搜索（用於跳轉或初始化）
+    if (newSubtitleIndex < 0) {
+        int left = 0;
+        int right = subtitleEntries.size() - 1;
+        
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            const SubtitleEntry& entry = subtitleEntries[mid];
+            
+            if (currentTime >= entry.startTime && currentTime <= entry.endTime) {
+                newSubtitleIndex = mid;
+                break;
+            } else if (currentTime < entry.startTime) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+    }
+    
+    // 如果字幕索引改變，更新顯示
+    if (newSubtitleIndex != currentSubtitleIndex) {
+        int previousIndex = currentSubtitleIndex;
+        currentSubtitleIndex = newSubtitleIndex;
+        
+        // 優化：只重新生成變更的字幕行，而不是全部
+        // 由於 QTextBrowser 不支援部分 HTML 更新，這裡仍需重新生成全部 HTML
+        // 但只在索引真正改變時才更新，減少不必要的重繪
+        QString htmlSubtitles;
+        QTextStream stream(&htmlSubtitles);
+        
+        for (int idx = 0; idx < subtitleEntries.size(); idx++) {
+            const SubtitleEntry& entry = subtitleEntries[idx];
+            
+            // 格式化時間戳顯示
+            QString timestamp = QString("[%1s - %2s]")
+                .arg(entry.startTime, 0, 'f', 2)
+                .arg(entry.endTime, 0, 'f', 2);
+            
+            // 創建可點擊的連結
+            QString clickableTimestamp = QString("<a href=\"#%1\">%2</a>")
+                .arg(entry.startTime)
+                .arg(timestamp);
+            
+            // 如果是當前字幕，添加高亮樣式
+            if (idx == currentSubtitleIndex) {
+                stream << "<p id=\"subtitle-" << idx 
+                       << "\" style=\"background-color: #1DB954; color: #FFFFFF; padding: 8px; border-radius: 4px; font-weight: bold;\">" 
+                       << clickableTimestamp << " " 
+                       << entry.text.toHtmlEscaped() 
+                       << "</p>";
+            } else {
+                stream << "<p id=\"subtitle-" << idx << "\">" 
+                       << clickableTimestamp << " " 
+                       << entry.text.toHtmlEscaped() 
+                       << "</p>";
+            }
+        }
+        
+        // 更新字幕內容
+        currentSubtitles = htmlSubtitles;
+        
+        // 更新顯示
+        updateSubtitleDisplay();
     }
 }
