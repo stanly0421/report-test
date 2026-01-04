@@ -597,7 +597,7 @@ void Widget::createConnections()
     connect(repeatButton, &QPushButton::clicked, this, &Widget::onRepeatClicked);
     
     // 播放清單管理
-    connect(playlistWidget, &QListWidget::itemDoubleClicked, this, &Widget::onVideoDoubleClicked);
+    connect(playlistWidget, &QListWidget::itemDoubleClicked, this, &Widget::onSongDoubleClicked);
     connect(playlistWidget, &QListWidget::itemSelectionChanged, this, &Widget::updateButtonStates);
     connect(playlistWidget, &QListWidget::customContextMenuRequested, this, &Widget::onPlaylistContextMenu);
     
@@ -948,7 +948,7 @@ void Widget::onRepeatClicked()
     }
 }
 
-void Widget::onVideoDoubleClicked(QListWidgetItem* item)
+void Widget::onSongDoubleClicked(QListWidgetItem* item)
 {
     int index = playlistWidget->row(item);
     playMusic(index);
@@ -1298,11 +1298,11 @@ int Widget::getRandomMusicIndex(bool excludeCurrent)
         return 0;
     }
     
-    QList<int> unplayedSongs = getUnplayedVideoIndices(excludeCurrent);
+    QList<int> unplayedSongs = getUnplayedMusicIndices(excludeCurrent);
     
     if (unplayedSongs.isEmpty() && isRepeatMode) {
         playedSongsInCurrentSession.clear();
-        unplayedSongs = getUnplayedVideoIndices(excludeCurrent);
+        unplayedSongs = getUnplayedMusicIndices(excludeCurrent);
     }
     
     if (unplayedSongs.isEmpty()) {
@@ -1313,7 +1313,7 @@ int Widget::getRandomMusicIndex(bool excludeCurrent)
     return unplayedSongs[randomIndex];
 }
 
-QList<int> Widget::getUnplayedVideoIndices(bool excludeCurrent)
+QList<int> Widget::getUnplayedMusicIndices(bool excludeCurrent)
 {
     QList<int> unplayedSongs;
     

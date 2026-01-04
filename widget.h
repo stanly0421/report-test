@@ -98,7 +98,7 @@ private slots:
     void onLoadLocalFileClicked();
     
     // 播放清單項目雙擊處理函式
-    void onVideoDoubleClicked(QListWidgetItem* item);
+    void onSongDoubleClicked(QListWidgetItem* item);
     // 加入播放清單按鈕點擊處理函式
     void onAddToPlaylistClicked();
     // 從播放清單刪除項目的處理函式
@@ -140,20 +140,20 @@ private:
     void updatePlaylistDisplay();
     // 更新目標播放清單下拉選單的函式
     void updateTargetPlaylistComboBox();
-    // 播放指定索引的影片/音樂
-    void playVideo(int index);
+    // 播放指定索引的音樂
+    void playMusic(int index);
     // 更新按鈕啟用/停用狀態的函式
     void updateButtonStates();
     // 儲存播放清單到檔案的函式
     void savePlaylistsToFile();
     // 從檔案載入播放清單的函式
     void loadPlaylistsFromFile();
-    // 取得下一首影片/音樂的索引
-    int getNextVideoIndex();
-    // 取得隨機影片/音樂的索引，excludeCurrent 決定是否排除當前播放的項目
-    int getRandomVideoIndex(bool excludeCurrent = true);
+    // 取得下一首音樂的索引
+    int getNextMusicIndex();
+    // 取得隨機音樂的索引，excludeCurrent 決定是否排除當前播放的項目
+    int getRandomMusicIndex(bool excludeCurrent = true);
     // 取得未播放的音樂索引清單
-    QList<int> getUnplayedVideoIndices(bool excludeCurrent = true);
+    QList<int> getUnplayedMusicIndices(bool excludeCurrent = true);
     // 播放本地檔案的函式
     void playLocalFile(const QString& filePath);
     // 更新音樂資訊標籤的函式
