@@ -2287,5 +2287,11 @@ void Widget::onSubtitleSyncTimer()
         
         // 更新顯示
         updateSubtitleDisplay();
+        
+        // 滾動到當前字幕位置，保持字幕可見
+        if (currentSubtitleIndex >= 0) {
+            QString anchorId = QString("subtitle-%1").arg(currentSubtitleIndex);
+            videoDisplayArea->scrollToAnchor(anchorId);
+        }
     }
 }
